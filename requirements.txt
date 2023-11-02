@@ -1,0 +1,9 @@
+torch==2.0.1
+accelerate>=0.16.0
+torchvision==0.15.2
+transformers==4.28.1
+xformers==0.0.20
+ftfy
+tensorboard
+Jinja2
+bitsandbytes

@@ -16,6 +16,7 @@
 import argparse
 import logging
 import math
+import sys
 import os
 import random
 import shutil
@@ -219,14 +220,13 @@ def parse_args():
         "--placeholder_token",
         type=str,
         default=None,
-        required=True,
         help="A token to use as a placeholder for the concept.",
     )
     parser.add_argument(
-        "--initializer_token", type=str, default=None, required=True, help="A token to use as initializer word."
+        "--initializer_token", type=str, default=None, help="A token to use as initializer word."
     )
     parser.add_argument("--learnable_property", type=str, default="object", help="Choose between 'object' and 'style'")
-    parser.add_argument("--repeats", type=int, default=100, help="How many times to repeat the training data.")
+    parser.add_argument("--repeats", type=int, default=1000, help="How many times to repeat the training data.")
     parser.add_argument(
         "--output_dir",
         type=str,
@@ -247,13 +247,12 @@ def parse_args():
         "--center_crop", action="store_true", help="Whether to center crop images before resizing to resolution."
     )
     parser.add_argument(
-        "--train_batch_size", type=int, default=16, help="Batch size (per device) for the training dataloader."
+        "--train_batch_size", type=int, default=4, help="Batch size (per device) for the training dataloader."
     )
     parser.add_argument("--num_train_epochs", type=int, default=100)
     parser.add_argument(
         "--max_train_steps",
         type=int,
-        default=5000,
         help="Total number of training steps to perform.  If provided, overrides num_train_epochs.",
     )
     parser.add_argument(
@@ -419,6 +418,12 @@ def parse_args():
         action="store_true",
         help="If specified save the checkpoint not in `safetensors` format, but in original PyTorch format instead.",
     )
+    parser.add_argument(
+        "--idx",
+        default=None,
+        type=int,
+        help="ImageNet 100 class idx"
+    )
 
     args = parser.parse_args()
     env_local_rank = int(os.environ.get("LOCAL_RANK", -1))
@@ -427,6 +432,18 @@ def parse_args():
 
     if args.train_data_dir is None:
         raise ValueError("You must specify a train data directory.")
+
+
+    if args.idx is not None:
+        assert 0 <= args.idx < 100
+        sys.path.insert(0,str(Path(__file__).parent.parent.parent))
+        from imagenet_classes import subset100, wnid2classname_simple
+        args.wnid = subset100[args.idx]
+        args.class_name = wnid2classname_simple[args.wnid]
+        args.placeholder_token=f"<{args.class_name}>"
+        args.initializer_token=args.class_name
+        args.train_data_dir = os.path.join(args.train_data_dir, args.wnid)
+        args.output_dir = os.path.join(args.output_dir, str(args.idx))
 
     return args
 
@@ -506,7 +523,7 @@ class TextualInversionDataset(Dataset):
         self.center_crop = center_crop
         self.flip_p = flip_p
 
-        self.image_paths = [os.path.join(self.data_root, file_path) for file_path in os.listdir(self.data_root)]
+        self.image_paths = [os.path.join(self.data_root, file_path) for file_path in os.listdir(self.data_root) if not file_path.endswith(".jsonl")]
 
         self.num_images = len(self.image_paths)
         self._length = self.num_images
@@ -651,8 +668,8 @@ def main():
     # Convert the initializer_token, placeholder_token to ids
     token_ids = tokenizer.encode(args.initializer_token, add_special_tokens=False)
     # Check if initializer_token is a single token or a sequence of tokens
-    if len(token_ids) > 1:
-        raise ValueError("The initializer token must be a single token.")
+    #if len(token_ids) > 1:
+    #    raise ValueError("The initializer token must be a single token.")
 
     initializer_token_id = token_ids[0]
     placeholder_token_ids = tokenizer.convert_tokens_to_ids(placeholder_tokens)

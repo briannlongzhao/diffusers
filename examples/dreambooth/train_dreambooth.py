@@ -22,6 +22,7 @@ import itertools
 import logging
 import math
 import os
+import sys
 import shutil
 import warnings
 from pathlib import Path
@@ -573,6 +574,12 @@ def parse_args(input_args=None):
         choices=["DPMSolverMultistepScheduler", "DDPMScheduler"],
         help="Select which scheduler to use for validation. DDPMScheduler is recommended for DeepFloyd IF.",
     )
+    parser.add_argument(
+        "--idx",
+        default=None,
+        type=int,
+        help="ImageNet 100 class idx"
+    )
 
     if input_args is not None:
         args = parser.parse_args(input_args)
@@ -597,6 +604,16 @@ def parse_args(input_args=None):
 
     if args.train_text_encoder and args.pre_compute_text_embeddings:
         raise ValueError("`--train_text_encoder` cannot be used with `--pre_compute_text_embeddings`")
+
+    if args.idx is not None:
+        assert 0 <= args.idx < 100
+        sys.path.insert(0,str(Path(__file__).parent.parent.parent))
+        from imagenet_classes import subset100, wnid2classname_simple
+        args.wnid = subset100[args.idx]
+        args.class_name = wnid2classname_simple[args.wnid]
+        args.instance_prompt = f"{args.instance_prompt.strip()} {args.class_name}"
+        args.instance_data_dir = os.path.join(args.instance_data_dir, args.wnid)
+        args.output_dir = os.path.join(args.output_dir, str(args.idx))
 
     return args
 
@@ -632,7 +649,7 @@ class DreamBoothDataset(Dataset):
         if not self.instance_data_root.exists():
             raise ValueError(f"Instance {self.instance_data_root} images root doesn't exists.")
 
-        self.instance_images_path = list(Path(instance_data_root).iterdir())
+        self.instance_images_path = [p for p in list(Path(instance_data_root).iterdir()) if not str(p).endswith(".jsonl")]
         self.num_instance_images = len(self.instance_images_path)
         self.instance_prompt = instance_prompt
         self._length = self.num_instance_images

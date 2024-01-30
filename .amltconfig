@@ -1,0 +1,1 @@
+{"project_name": "diffusers", "storage_account_name": "canadav100data", "container_name": "v-enlongzhao", "blob_storage_account_name": "canadav100data", "registry_name": "projects", "local_path": "/lab/briannlz/diffusers", "default_output_dir": "/lab/briannlz/diffusers/amlt", "project_uuid": "7293701884.97879-63a4f396-d1b5-4d99-8fbd-073efc6f13ef", "version": "9.16.1"}

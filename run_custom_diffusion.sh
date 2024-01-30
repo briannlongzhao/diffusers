@@ -20,10 +20,9 @@ python examples/custom_diffusion/retrieve.py \
 
 accelerate launch --mixed_precision=$PRECISION examples/custom_diffusion/train_custom_diffusion.py \
 	--pretrained_model_name_or_path=$MODEL_NAME \
-	--instance_data_dir=$DATA_DIR/$INSTANCE_DIR \
-	--output_dir=$MODEL_DIR/${INSTANCE_DIR}_custom_diffusion \
-	--instance_prompt="$TRAIN_PROMPT" \
-	--resolution=768 \
+	--instance_data_dir=/lab/tmpig7b/u/brian-data/imagenet/images/train_small \
+	--output_dir=custom_diffusion_models \
+	--instance_prompt="a photo of <new1>" \
 	--gradient_accumulation_steps=1 \
 	--learning_rate=1e-5 \
 	--lr_scheduler="constant" \
@@ -31,25 +30,18 @@ accelerate launch --mixed_precision=$PRECISION examples/custom_diffusion/train_c
 	--max_train_steps=250 \
 	--scale_lr \
 	--hflip \
-	--modifier_token=$TOKEN \
-	--push_to_hub \
+	--modifier_token="<new1>" \
 	--use_8bit_adam \
 	--gradient_checkpointing \
-	--mixed_precision=$PRECISION \
-	--with_prior_preservation \
-	--class_data_dir=$PRESERVE_DIR \
-	--real_prior \
-	--prior_loss_weight=1.0 \
-	--class_prompt="$PRESERVE_PROMPT" \
-	--num_class_images 200 \
+	--mixed_precision=fp16 \
 	--no_safe_serialization \
 	--train_batch_size=2
 
 python examples/custom_diffusion/inference.py \
 	--pretrained_model_name_or_path=$MODEL_NAME \
-	--model_path=$MODEL_DIR/${INSTANCE_DIR}_custom_diffusion \
-	--prompt="$INFERENCE_PROMPT" \
-	--token="$TOKEN" \
-	--save_dir=$OUTPUT_DIR/${INSTANCE_DIR}_custom_diffusion \
-	--num_images=$NUM_IMAGES
+	--model_path=custom_diffusion_models \
+	--prompt="a photo of <new1>" \
+	--token="<new1>" \
+	--save_dir=custom_diffusion_output \
+	--num_images=10
 

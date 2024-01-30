@@ -1,0 +1,8 @@
+*.png
+*.md
+*.jpg
+*.jpeg
+images/
+models/
+*_models/
+src/

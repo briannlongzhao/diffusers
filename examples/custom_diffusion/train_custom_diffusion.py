@@ -19,6 +19,7 @@ import itertools
 import json
 import logging
 import math
+import sys
 import os
 import random
 import shutil
@@ -192,7 +193,7 @@ class CustomDiffusionDataset(Dataset):
         self.with_prior_preservation = with_prior_preservation
         for concept in concepts_list:
             inst_img_path = [
-                (x, concept["instance_prompt"]) for x in Path(concept["instance_data_dir"]).iterdir() if x.is_file()
+                (x, concept["instance_prompt"]) for x in Path(concept["instance_data_dir"]).iterdir() if x.is_file() and not str(x).endswith(".jsonl")
             ]
             self.instance_images_path.extend(inst_img_path)
 
@@ -620,6 +621,12 @@ def parse_args(input_args=None):
         action="store_true",
         help="If specified save the checkpoint not in `safetensors` format, but in original PyTorch format instead.",
     )
+    parser.add_argument(
+        "--idx",
+        default=None,
+        type=int,
+        help="ImageNet 100 class idx"
+    )
 
     if input_args is not None:
         args = parser.parse_args(input_args)
@@ -642,6 +649,17 @@ def parse_args(input_args=None):
             warnings.warn("You need not use --class_data_dir without --with_prior_preservation.")
         if args.class_prompt is not None:
             warnings.warn("You need not use --class_prompt without --with_prior_preservation.")
+
+    if args.idx is not None:
+        assert 0 <= args.idx < 100
+        sys.path.insert(0,str(Path(__file__).parent.parent.parent))
+        from imagenet_classes import subset100, wnid2classname_simple
+        args.wnid = subset100[args.idx]
+        args.class_name = wnid2classname_simple[args.wnid]
+        args.instance_prompt = f"{args.instance_prompt.strip()} {args.class_name}"
+        args.instance_data_dir = os.path.join(args.instance_data_dir, args.wnid)
+        args.output_dir = os.path.join(args.output_dir, str(args.idx))
+
 
     return args
 
@@ -830,10 +848,10 @@ def main(args):
 
             # Convert the initializer_token, placeholder_token to ids
             token_ids = tokenizer.encode([initializer_token], add_special_tokens=False)
-            print(token_ids)
             # Check if initializer_token is a single token or a sequence of tokens
             if len(token_ids) > 1:
-                raise ValueError("The initializer token must be a single token.")
+                token_ids = [token_ids[0]]
+                #raise ValueError("The initializer token must be a single token.")
 
             initializer_token_id.append(token_ids[0])
             modifier_token_id.append(tokenizer.convert_tokens_to_ids(modifier_token))

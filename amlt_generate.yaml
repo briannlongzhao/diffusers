@@ -1,0 +1,53 @@
+description: SDCoOp generate
+
+target:
+  service: sing
+#  service: amlk8s
+  name: msroctovc  # sing
+#  name: msrresrchvc  # sing
+#  name: itplabrr1cl1  # amlk8s
+#  name: itphyoerbj1cl1  # amlk8s
+
+environment:
+  image: amlt-sing/pytorch-1.11.0-cuda11.6
+  setup:
+  - conda create -n diffusers python=3.10 -y
+  - conda init $$(basename $$SHELL)
+  - source $$(conda info --base)/etc/profile.d/conda.sh
+  - conda activate diffusers
+  - pip install -r requirements.txt
+
+code:
+  local_dir: $CONFIG_DIR
+
+#storage:
+#  blob:
+#    storage_account_name: yunhao
+#    container_name: contextaug
+
+#data:
+#  local_dir: /lab/briannlz/SDCoOp/pretrained
+#  remote_dir: .
+
+search:
+  job_template:
+    name: "SDCoOp generate {random_string:s}"
+    sku: 16G1
+    command:
+    - conda init $$(basename $$SHELL)
+    - source $$(conda info --base)/etc/profile.d/conda.sh
+    - conda activate diffusers
+    - python generate_dataset.py
+      --weights_path=$$AMLT_DATA_DIR/pretrained/1300img_reparam_ortho.npz
+      --output_dir=$$AMLT_OUTPUT_DIR/../../imagenet_syn_1300img_reparam_ortho_full
+      --bsz=4
+      --n_cls=1000
+      --idx={idx}
+      --num_machines=64
+      --method=prompt_learner
+  type: grid
+  max_trials: 64
+  params:
+    - name: idx
+#      values: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49]
+      values: choice(range(64))

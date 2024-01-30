@@ -1,0 +1,49 @@
+description: text edit dreambooth
+
+target:
+  service: sing
+#  service: amlk8s
+  name: msroctovc  # sing
+#  name: msrresrchvc  # sing
+#  name: itplabrr1cl1  # amlk8s
+#  name: itphyoerbj1cl1  # amlk8s
+
+environment:
+  image: amlt-sing/pytorch-1.11.0-cuda11.6
+  setup:
+  - conda create -n diffusers python=3.10 -y
+  - conda init $$(basename $$SHELL)
+  - source $$(conda info --base)/etc/profile.d/conda.sh
+  - conda activate diffusers
+  - pip install -r requirements.txt
+  - pip install diffusers
+
+code:
+  local_dir: $CONFIG_DIR
+
+#storage:
+#  blob:
+#    storage_account_name: yunhao
+#    container_name: contextaug
+
+#data:
+#  local_dir: /lab/briannlz/SDCoOp/pretrained
+#  remote_dir: .
+
+search:
+  job_template:
+    name: "ImageNet textual inversion generate {random_string:s}"
+    submit_args:
+        max_run_duration_seconds: 1209600
+    sku: 16G1
+    command:
+    - conda init $$(basename $$SHELL)
+    - source $$(conda info --base)/etc/profile.d/conda.sh
+    - conda activate diffusers
+    - huggingface-cli login --token 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
+    - bash run_dreambooth_text_edit.sh {class_name}
+  type: grid
+  max_trials: 12
+  params:
+    - name: class_name
+      values: "['basquiat', 'cathedral', 'chinese_painting', 'fine_dining', 'genx', 'gundam', 'hay', 'katsushika_hokusai', 'sesame_street', 'smile', 'sports_car', 'thangka']"

@@ -1,0 +1,76 @@
+description: imagenet custom diffusion
+
+target:
+  service: sing
+#  service: amlk8s
+  name: msroctovc  # sing
+#  name: msrresrchvc  # sing
+#  name: itplabrr1cl1  # amlk8s
+#  name: itphyoerbj1cl1  # amlk8s
+
+environment:
+  image: amlt-sing/pytorch-1.11.0-cuda11.6
+  setup:
+  - conda create -n diffusers python=3.10 -y
+  - conda init $$(basename $$SHELL)
+  - source $$(conda info --base)/etc/profile.d/conda.sh
+  - conda activate diffusers
+  - pip install -r requirements.txt
+  - pip install diffusers
+
+code:
+  local_dir: $CONFIG_DIR
+
+#storage:
+#  blob:
+#    storage_account_name: yunhao
+#    container_name: contextaug
+
+#data:
+#  local_dir: /lab/briannlz/SDCoOp/pretrained
+#  remote_dir: .
+
+search:
+  job_template:
+    name: "ImageNet custom diffusion generate {random_string:s}"
+    submit_args:
+        max_run_duration_seconds: 1209600
+    sku: 16G1
+    command:
+    - conda init $$(basename $$SHELL)
+    - source $$(conda info --base)/etc/profile.d/conda.sh
+    - conda activate diffusers
+    - huggingface-cli login --token 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
+    - accelerate launch --mixed_precision=fp16 examples/custom_diffusion/train_custom_diffusion.py
+      --pretrained_model_name_or_path=stabilityai/stable-diffusion-2-1
+      --instance_data_dir=/mnt/default/imagenet/images/train_small/
+      --output_dir=/mnt/default/custom_diffusion_models_small/
+      --instance_prompt="a photo of <new1>"
+      --gradient_accumulation_steps=1
+      --learning_rate=1e-5
+      --lr_scheduler="constant"
+      --lr_warmup_steps=0
+      --num_train_epochs=5
+      --scale_lr
+      --hflip
+      --modifier_token="<new1>"
+      --use_8bit_adam
+      --gradient_checkpointing
+      --mixed_precision=fp16
+      --no_safe_serialization
+      --push_to_hub
+      --train_batch_size=4
+      --idx={idx}
+    - python examples/custom_diffusion/inference.py
+      --pretrained_model_name_or_path=stabilityai/stable-diffusion-2-1
+      --model_path=/mnt/default/custom_diffusion_models_small/
+      --prompt="a photo of <new1>"
+      --token="<new1>"
+      --save_dir=/mnt/default/custom_diffusion_output_small/
+      --num_images=1300
+      --idx={idx}
+  type: grid
+  max_trials: 100
+  params:
+    - name: idx
+      values: choice(range(100))
